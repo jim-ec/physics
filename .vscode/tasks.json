@@ -7,7 +7,7 @@
             "problemMatcher": [
                 "$rustc"
             ],
-            "label": "rust: cargo run"
+            "label": "Run"
         },
         {
             "type": "cargo",
@@ -18,7 +18,7 @@
             "problemMatcher": [
                 "$rustc"
             ],
-            "label": "rust: cargo run --release"
+            "label": "Run Release"
         },
         {
             "type": "cargo",
@@ -26,7 +26,7 @@
             "problemMatcher": [
                 "$rustc"
             ],
-            "label": "rust: cargo build"
+            "label": "Build"
         },
     ]
 }

@@ -31,14 +31,11 @@ pub fn light(mut commands: Commands) {
 }
 
 pub fn camera(mut commands: Commands) {
-    commands
-        .spawn(Camera3dBundle {
+    commands.spawn((
+        Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
-        })
-        .insert(OrbitCamera::new(
-            5.0,
-            f32::to_radians(50.0),
-            f32::to_radians(60.0),
-        ));
+        },
+        OrbitCamera::new(5.0, f32::to_radians(50.0), f32::to_radians(60.0)),
+    ));
 }
