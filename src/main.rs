@@ -1,3 +1,7 @@
+mod algebra;
+mod collider;
+mod rigid_body;
+
 use bevy::prelude::*;
 
 fn main() {
