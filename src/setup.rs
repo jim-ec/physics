@@ -1,0 +1,44 @@
+use crate::camera::OrbitCamera;
+use bevy::prelude::*;
+use bevy_prototype_debug_lines::DebugLines;
+
+pub fn axes(mut lines: ResMut<DebugLines>) {
+    let red = Color::rgb(1.0, 0.1, 0.1);
+    lines.line_colored(Vec3::ZERO, Vec3::X, f32::INFINITY, red);
+    lines.line_colored(Vec3::X, Vec3::new(0.8, 0.0, 0.2), f32::INFINITY, red);
+    lines.line_colored(Vec3::X, Vec3::new(0.8, 0.0, -0.2), f32::INFINITY, red);
+
+    let green = Color::rgb(0.2, 1.0, 0.2);
+    lines.line_colored(Vec3::ZERO, Vec3::Y, f32::INFINITY, green);
+    lines.line_colored(Vec3::Y, Vec3::new(0.2, 0.8, 0.0), f32::INFINITY, green);
+    lines.line_colored(Vec3::Y, Vec3::new(-0.2, 0.8, 0.0), f32::INFINITY, green);
+
+    let blue = Color::rgb(0.3, 0.6, 1.0);
+    lines.line_colored(Vec3::ZERO, Vec3::Z, f32::INFINITY, blue);
+    lines.line_colored(Vec3::Z, Vec3::new(0.2, 0.0, 0.8), f32::INFINITY, blue);
+    lines.line_colored(Vec3::Z, Vec3::new(-0.2, 0.0, 0.8), f32::INFINITY, blue);
+}
+
+pub fn light(mut commands: Commands) {
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 1500.0,
+            ..default()
+        },
+        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        ..default()
+    });
+}
+
+pub fn camera(mut commands: Commands) {
+    commands
+        .spawn(Camera3dBundle {
+            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        })
+        .insert(OrbitCamera::new(
+            5.0,
+            f32::to_radians(50.0),
+            f32::to_radians(60.0),
+        ));
+}
