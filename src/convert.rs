@@ -1,10 +1,9 @@
 use bevy::prelude::{Quat, Transform, Vec3};
-use parry3d::{
-    math::{Isometry, Point},
-    na::Vector3,
-};
+use parry3d::math::{Isometry, Point};
 
-pub fn vec(vec: Vector3<f32>) -> Vec3 {
+use crate::util::Vector;
+
+pub fn vec(vec: Vector) -> Vec3 {
     Vec3::new(vec.x, vec.y, vec.z)
 }
 

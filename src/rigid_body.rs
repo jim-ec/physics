@@ -1,6 +1,8 @@
+use bevy::prelude::*;
+
 use crate::util::Vector;
 
-#[derive(Debug)]
+#[derive(Debug, Component)]
 pub struct RigidBody {
     pub force: Vector,
     pub inverse_mass: f32,
