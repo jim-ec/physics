@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub type Vector = parry3d::math::Vector<f32>;
 pub type Translation = parry3d::math::Translation<f32>;
 

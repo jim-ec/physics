@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::{rigid_body::RigidBody, util::Vector};
 
 #[derive(Debug)]

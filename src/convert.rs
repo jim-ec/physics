@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use bevy::prelude::{Quat, Transform, Vec3};
 use parry3d::math::{Isometry, Point};
 

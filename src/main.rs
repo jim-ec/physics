@@ -38,7 +38,7 @@ fn main() {
 
 pub const GRAVITY: f32 = 10.0;
 pub const SUBSTEPS: usize = 10;
-pub const STIFFNESS: f32 = 0.5;
+pub const STIFFNESS: f32 = 1.0;
 pub const FREQUENCY: f32 = 60.0;
 pub const TIME_SCALE: f32 = 1.0;
 pub const CAMERA_DISTANCE: f32 = 20.0;
