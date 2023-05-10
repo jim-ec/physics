@@ -17,7 +17,7 @@ use parry3d::{
     simba::scalar::{SubsetOf, SupersetOf},
 };
 use rand::random;
-use rigid_body::RigidBody;
+use rigid_body::{RigidBody, RigidBodyBundle, RigidBodyIntegration};
 use util::Vector;
 
 fn main() {
@@ -32,15 +32,16 @@ fn main() {
         .add_startup_system(setup::axes)
         .add_startup_system(setup)
         .add_system(debug_bodies)
-        .add_system(ball_contacts)
+        .add_system(integrate)
         .run()
 }
 
-const GRAVITY: f32 = 50.0;
-const SUBSTEPS: usize = 10;
-const STIFFNESS: f32 = 0.5;
-const FREQUENCY: f32 = 60.0;
-const TIME_SCALE: f32 = 1.0;
+pub const GRAVITY: f32 = 10.0;
+pub const SUBSTEPS: usize = 10;
+pub const STIFFNESS: f32 = 0.5;
+pub const FREQUENCY: f32 = 60.0;
+pub const TIME_SCALE: f32 = 1.0;
+pub const CAMERA_DISTANCE: f32 = 20.0;
 
 #[derive(Component, Clone, Copy)]
 struct Radius(f32);
@@ -53,20 +54,23 @@ fn setup(
     let mut height = 1.0;
     for _ in 0..50 {
         let radius = 0.5;
-        let location = Vector::new(random::<f32>() * 0.1, height, random::<f32>() * 0.1);
         commands.spawn((
             Radius(radius),
-            RigidBody::default()
-                .force(Vector::new(0.0, -GRAVITY, 0.0))
-                .inverse_mass(1.0 / 1.0)
-                .teleport(location),
+            RigidBodyBundle::from(RigidBody {
+                force: Vector::new(0.0, -GRAVITY, 0.0),
+                ..default()
+            }),
             PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Icosphere {
                     radius: radius,
                     subdivisions: 32,
                 })),
                 material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
-                transform: Transform::from_translation(convert::vec(location)),
+                transform: Transform::from_translation(Vec3::new(
+                    random::<f32>() * 0.1,
+                    height,
+                    random::<f32>() * 0.1,
+                )),
                 ..default()
             },
         ));
@@ -75,69 +79,80 @@ fn setup(
     }
 }
 
-fn ball_contacts(mut query: Query<(&mut RigidBody, &Radius, &mut Transform)>) {
+// TODO: Split into several sub-systems?
+// TODO: Properly use global transform
+fn integrate(
+    mut query: Query<(
+        &mut RigidBody,
+        &mut RigidBodyIntegration,
+        &Radius,
+        &mut Transform,
+    )>,
+) {
     for _ in 0..SUBSTEPS {
         let dt = 1.0 / FREQUENCY / SUBSTEPS as f32 / TIME_SCALE;
 
-        for (mut body, &Radius(radius), _) in query.iter_mut() {
-            body.integrate(dt);
+        for (mut body, mut integration, &Radius(radius), transform) in query.iter_mut() {
+            let translation = convert::to_vec(transform.translation);
+            integration.integrate(&mut body, translation, dt);
 
             if let Some(contact) = contact::contact(
                 &Isometry::identity(),
                 &HalfSpace::new(Unit::new_normalize(Vector::new(0.0, 1.0, 0.0))),
                 &Isometry::from_subset(&Translation::new(
-                    body.translation().x,
-                    body.translation().y,
-                    body.translation().z,
+                    integration.translation().x,
+                    integration.translation().y,
+                    integration.translation().z,
                 )),
                 &Ball { radius },
                 0.0,
             )
             .unwrap()
             {
-                body.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
+                integration.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
             }
         }
 
         let mut combinations = query.iter_combinations_mut();
-        while let Some([(mut b1, &Radius(r1), _), (mut b2, &Radius(r2), _)]) =
+        while let Some([(_, mut i1, &Radius(r1), _), (_, mut i2, &Radius(r2), _)]) =
             combinations.fetch_next()
         {
             if let Some(contact) = contact::contact(
                 &Isometry::from_subset(&Translation::new(
-                    b1.translation().x,
-                    b1.translation().y,
-                    b1.translation().z,
+                    i1.translation().x,
+                    i1.translation().y,
+                    i1.translation().z,
                 )),
                 &Ball { radius: r1 },
                 &Isometry::from_subset(&Translation::new(
-                    b2.translation().x,
-                    b2.translation().y,
-                    b2.translation().z,
+                    i2.translation().x,
+                    i2.translation().y,
+                    i2.translation().z,
                 )),
                 &Ball { radius: r2 },
                 0.0,
             )
             .unwrap()
             {
-                b1.push_impulse(STIFFNESS * contact.dist * contact.normal1.to_superset());
-                b2.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
+                i1.push_impulse(STIFFNESS * contact.dist * contact.normal1.to_superset());
+                i2.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
             }
         }
 
-        for (mut body, _, mut transform) in query.iter_mut() {
-            body.apply_impulses();
-            body.derive(dt);
-            transform.translation = convert::vec(body.translation());
+        for (mut body, mut integration, _, mut transform) in query.iter_mut() {
+            integration.apply_impulses(&body);
+            let translation =
+                integration.derive(&mut body, convert::to_vec(transform.translation), dt);
+            transform.translation = convert::vec(translation);
         }
     }
 }
 
-fn debug_bodies(query: Query<&RigidBody>, mut lines: ResMut<DebugLines>) {
-    for body in query.iter() {
+fn debug_bodies(query: Query<(&RigidBody, &Transform)>, mut lines: ResMut<DebugLines>) {
+    for (body, transform) in query.iter() {
         lines.line_colored(
-            convert::vec(body.translation()),
-            convert::vec(body.translation() + body.velocity),
+            transform.translation,
+            transform.translation + convert::vec(body.velocity),
             0.0,
             Color::GREEN,
         );

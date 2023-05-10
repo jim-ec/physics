@@ -1,4 +1,4 @@
-use crate::camera::OrbitCamera;
+use crate::{camera::OrbitCamera, CAMERA_DISTANCE};
 use bevy::prelude::*;
 use bevy_prototype_debug_lines::DebugLines;
 
@@ -36,6 +36,10 @@ pub fn camera(mut commands: Commands) {
             transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
-        OrbitCamera::new(45.0, f32::to_radians(50.0), f32::to_radians(60.0)),
+        OrbitCamera::new(
+            CAMERA_DISTANCE,
+            f32::to_radians(50.0),
+            f32::to_radians(60.0),
+        ),
     ));
 }
