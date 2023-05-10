@@ -29,7 +29,6 @@ fn main() {
             time_scale: 1.0,
         })
         .add_system(bevy::window::close_on_esc)
-        .add_startup_system(setup::light)
         .add_startup_system(setup::camera)
         .add_startup_system(setup::axes)
         .add_startup_system(init);
