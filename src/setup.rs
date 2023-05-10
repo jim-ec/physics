@@ -22,7 +22,7 @@ pub fn axes(mut lines: ResMut<DebugLines>) {
 pub fn light(mut commands: Commands) {
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 1500.0,
+            intensity: 5000.0,
             ..default()
         },
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
@@ -36,6 +36,6 @@ pub fn camera(mut commands: Commands) {
             transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
-        OrbitCamera::new(15.0, f32::to_radians(50.0), f32::to_radians(60.0)),
+        OrbitCamera::new(45.0, f32::to_radians(50.0), f32::to_radians(60.0)),
     ));
 }
