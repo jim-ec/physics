@@ -1,4 +1,5 @@
 mod camera;
+mod constraint;
 mod convert;
 mod rigid_body;
 mod setup;
@@ -12,8 +13,10 @@ use parry3d::{
     math::{Isometry, Translation},
     query::contact,
     shape::Ball,
-    simba::scalar::SupersetOf,
+    simba::scalar::{SubsetOf, SupersetOf},
 };
+use rigid_body::RigidBody;
+use util::Vector;
 
 fn main() {
     App::new()
@@ -35,19 +38,40 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut lines: ResMut<DebugLines>,
 ) {
-    let iso1: Isometry<f32> = Isometry::from_subset(&Translation::new(0.0, 0.0, 0.0));
-    let iso2: Isometry<f32> = Isometry::from_subset(&Translation::new(1.5, 0.5, 0.0));
+    let mut iso1: Isometry<f32> = Isometry::from_subset(&Translation::new(0.0, 0.0, 0.0));
+    let mut iso2: Isometry<f32> = Isometry::from_subset(&Translation::new(1.5, 0.5, 0.0));
     let ball1 = Ball { radius: 1.0 };
     let ball2 = Ball { radius: 0.8 };
 
-    if let Some(contact) = contact::contact(&iso1, &ball1, &iso2, &ball2, 0.0).unwrap() {
-        lines.line_colored(
-            convert::point(contact.point1),
-            convert::point(contact.point2),
-            f32::MAX,
-            Color::rgb(1.0, 1.0, 0.1),
-        );
-    }
+    let contact = contact::contact(&iso1, &ball1, &iso2, &ball2, 0.0)
+        .unwrap()
+        .unwrap();
+    lines.line_colored(
+        convert::point(contact.point1),
+        convert::point(contact.point2),
+        f32::MAX,
+        Color::rgb(1.0, 1.0, 0.1),
+    );
+
+    let mut body1 = RigidBody {
+        force: Vector::zeros(),
+        inverse_mass: 1.0 / 10.0,
+        velocity: Vector::zeros(),
+        translation: iso1.translation.vector,
+    };
+    let mut body2 = RigidBody {
+        force: Vector::zeros(),
+        inverse_mass: 1.0 / 10.0,
+        velocity: Vector::zeros(),
+        translation: iso2.translation.vector,
+    };
+
+    const FACTOR: f32 = 1.0;
+    body1.apply_impulse(FACTOR * -contact.normal1.to_superset());
+    body2.apply_impulse(FACTOR * contact.normal1.to_superset());
+
+    iso1.translation.vector = body1.translation;
+    iso2.translation.vector = body2.translation;
 
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Icosphere {
