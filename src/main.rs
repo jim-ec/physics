@@ -58,6 +58,7 @@ fn setup(
             Radius(radius),
             RigidBodyBundle::from(RigidBody {
                 force: Vec3::new(0.0, -GRAVITY, 0.0),
+                mass: (random::<f32>() + 0.1) * 5.0,
                 ..default()
             }),
             PbrBundle {

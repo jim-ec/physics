@@ -3,7 +3,7 @@ use bevy::prelude::*;
 #[derive(Debug, Component, Clone, Copy)]
 pub struct RigidBody {
     pub force: Vec3,
-    pub inverse_mass: f32, // TODO: Do not use inverse dimensionality
+    pub mass: f32,
     pub velocity: Vec3,
 }
 
@@ -11,7 +11,7 @@ impl Default for RigidBody {
     fn default() -> Self {
         Self {
             force: Vec3::ZERO,
-            inverse_mass: 1.0,
+            mass: 1.0,
             velocity: Vec3::ZERO,
         }
     }
@@ -40,7 +40,7 @@ impl From<RigidBody> for RigidBodyBundle {
 
 impl RigidBodyIntegration {
     pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) {
-        body.velocity += dt * body.force * body.inverse_mass;
+        body.velocity += dt * body.force / body.mass;
         self.translation = translation + dt * body.velocity;
     }
 
@@ -56,7 +56,7 @@ impl RigidBodyIntegration {
     pub fn apply_impulses(&mut self, body: &RigidBody) {
         if self.impulse.1 > 0 {
             let total_impulse = self.impulse.0 / self.impulse.1 as f32;
-            self.translation += total_impulse * body.inverse_mass;
+            self.translation += total_impulse / body.mass;
             self.impulse = (Vec3::ZERO, 0);
         }
     }

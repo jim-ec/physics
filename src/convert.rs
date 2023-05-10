@@ -7,10 +7,6 @@ pub fn vec(vec: Vector) -> Vec3 {
     Vec3::new(vec.x, vec.y, vec.z)
 }
 
-pub fn to_vec(vec: Vec3) -> Vector {
-    Vector::new(vec.x, vec.y, vec.z)
-}
-
 pub fn point(vec: Point<f32>) -> Vec3 {
     Vec3::new(vec.x, vec.y, vec.z)
 }
