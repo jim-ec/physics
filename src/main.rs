@@ -57,7 +57,7 @@ fn setup(
         commands.spawn((
             Radius(radius),
             RigidBodyBundle::from(RigidBody {
-                force: Vector::new(0.0, -GRAVITY, 0.0),
+                force: Vec3::new(0.0, -GRAVITY, 0.0),
                 ..default()
             }),
             PbrBundle {
@@ -93,8 +93,7 @@ fn integrate(
         let dt = 1.0 / FREQUENCY / SUBSTEPS as f32 / TIME_SCALE;
 
         for (mut body, mut integration, &Radius(radius), transform) in query.iter_mut() {
-            let translation = convert::to_vec(transform.translation);
-            integration.integrate(&mut body, translation, dt);
+            integration.integrate(&mut body, transform.translation, dt);
 
             if let Some(contact) = contact::contact(
                 &Isometry::identity(),
@@ -109,7 +108,9 @@ fn integrate(
             )
             .unwrap()
             {
-                integration.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
+                integration.push_impulse(
+                    STIFFNESS * contact.dist * convert::vec(-contact.normal1.to_superset()),
+                );
             }
         }
 
@@ -134,16 +135,18 @@ fn integrate(
             )
             .unwrap()
             {
-                i1.push_impulse(STIFFNESS * contact.dist * contact.normal1.to_superset());
-                i2.push_impulse(STIFFNESS * contact.dist * -contact.normal1.to_superset());
+                i1.push_impulse(
+                    STIFFNESS * contact.dist * convert::vec(contact.normal1.to_superset()),
+                );
+                i2.push_impulse(
+                    STIFFNESS * contact.dist * convert::vec(contact.normal2.to_superset()),
+                );
             }
         }
 
         for (mut body, mut integration, _, mut transform) in query.iter_mut() {
             integration.apply_impulses(&body);
-            let translation =
-                integration.derive(&mut body, convert::to_vec(transform.translation), dt);
-            transform.translation = convert::vec(translation);
+            transform.translation = integration.derive(&mut body, transform.translation, dt);
         }
     }
 }
@@ -152,7 +155,7 @@ fn debug_bodies(query: Query<(&RigidBody, &Transform)>, mut lines: ResMut<DebugL
     for (body, transform) in query.iter() {
         lines.line_colored(
             transform.translation,
-            transform.translation + convert::vec(body.velocity),
+            transform.translation + body.velocity,
             0.0,
             Color::GREEN,
         );

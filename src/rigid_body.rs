@@ -1,30 +1,26 @@
 use bevy::prelude::*;
-use derive_setters::*;
 
-use crate::util::Vector;
-
-// TODO: Use Bevy types
 #[derive(Debug, Component, Clone, Copy)]
 pub struct RigidBody {
-    pub force: Vector,
+    pub force: Vec3,
     pub inverse_mass: f32, // TODO: Do not use inverse dimensionality
-    pub velocity: Vector,
+    pub velocity: Vec3,
 }
 
 impl Default for RigidBody {
     fn default() -> Self {
         Self {
-            force: Vector::zeros(),
+            force: Vec3::ZERO,
             inverse_mass: 1.0,
-            velocity: Vector::zeros(),
+            velocity: Vec3::ZERO,
         }
     }
 }
 
 #[derive(Debug, Component, Default, Clone, Copy)]
 pub struct RigidBodyIntegration {
-    translation: Vector,
-    impulse: (Vector, usize),
+    translation: Vec3,
+    impulse: (Vec3, usize),
 }
 
 #[derive(Debug, Bundle, Default, Clone, Copy)]
@@ -43,16 +39,16 @@ impl From<RigidBody> for RigidBodyBundle {
 }
 
 impl RigidBodyIntegration {
-    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vector, dt: f32) {
+    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) {
         body.velocity += dt * body.force * body.inverse_mass;
         self.translation = translation + dt * body.velocity;
     }
 
-    pub fn translation(self) -> Vector {
+    pub fn translation(self) -> Vec3 {
         self.translation
     }
 
-    pub fn push_impulse(&mut self, impulse: Vector) {
+    pub fn push_impulse(&mut self, impulse: Vec3) {
         self.impulse.0 += impulse;
         self.impulse.1 += 1;
     }
@@ -61,11 +57,11 @@ impl RigidBodyIntegration {
         if self.impulse.1 > 0 {
             let total_impulse = self.impulse.0 / self.impulse.1 as f32;
             self.translation += total_impulse * body.inverse_mass;
-            self.impulse = (Vector::zeros(), 0);
+            self.impulse = (Vec3::ZERO, 0);
         }
     }
 
-    pub fn derive(&mut self, body: &mut RigidBody, translation: Vector, dt: f32) -> Vector {
+    pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) -> Vec3 {
         body.velocity = (self.translation - translation) / dt;
         self.translation
     }
