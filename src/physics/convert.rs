@@ -3,7 +3,7 @@
 use bevy::prelude::{Quat, Transform, Vec3};
 use parry3d::math::{Isometry, Point};
 
-use crate::util::Vector;
+use super::util::Vector;
 
 pub fn vec(vec: Vector) -> Vec3 {
     Vec3::new(vec.x, vec.y, vec.z)

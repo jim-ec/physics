@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::{rigid_body::RigidBody, util::Vector};
+use super::util::Vector;
 
 #[derive(Debug)]
 pub struct Constraint {

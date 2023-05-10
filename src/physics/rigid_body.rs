@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 #[derive(Debug, Component, Clone, Copy)]
 pub struct RigidBody {
-    pub force: Vec3,
     pub mass: f32,
     pub velocity: Vec3,
 }
@@ -10,7 +9,6 @@ pub struct RigidBody {
 impl Default for RigidBody {
     fn default() -> Self {
         Self {
-            force: Vec3::ZERO,
             mass: 1.0,
             velocity: Vec3::ZERO,
         }
@@ -39,8 +37,8 @@ impl From<RigidBody> for RigidBodyBundle {
 }
 
 impl RigidBodyIntegration {
-    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) {
-        body.velocity += dt * body.force / body.mass;
+    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, force: Vec3, dt: f32) {
+        body.velocity += dt * force / body.mass;
         self.translation = translation + dt * body.velocity;
     }
 
