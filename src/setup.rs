@@ -19,6 +19,68 @@ pub fn axes(mut lines: ResMut<DebugLines>) {
     lines.line_colored(Vec3::Z, Vec3::new(-0.2, 0.0, 0.8), f32::INFINITY, blue);
 }
 
+#[allow(unused)]
+pub fn grid(mut lines: ResMut<DebugLines>) {
+    let n = 100;
+
+    lines.line_colored(
+        Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(n as f32, 0.0, 0.0),
+        f32::INFINITY,
+        Color::WHITE,
+    );
+    lines.line_colored(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(-n as f32, 0.0, 0.0),
+        f32::INFINITY,
+        Color::WHITE,
+    );
+    lines.line_colored(
+        Vec3::new(0.0, 0.0, 1.0),
+        Vec3::new(0.0, 0.0, n as f32),
+        f32::INFINITY,
+        Color::WHITE,
+    );
+    lines.line_colored(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -n as f32),
+        f32::INFINITY,
+        Color::WHITE,
+    );
+
+    for i in 1..n {
+        let color = if i % 10 == 0 {
+            Color::WHITE
+        } else {
+            Color::GRAY
+        };
+        lines.line_colored(
+            Vec3::new(n as f32, 0.0, i as f32),
+            Vec3::new(-n as f32, 0.0, i as f32),
+            f32::INFINITY,
+            color,
+        );
+        lines.line_colored(
+            Vec3::new(n as f32, 0.0, -i as f32),
+            Vec3::new(-n as f32, 0.0, -i as f32),
+            f32::INFINITY,
+            color,
+        );
+        lines.line_colored(
+            Vec3::new(i as f32, 0.0, n as f32),
+            Vec3::new(i as f32, 0.0, -n as f32),
+            f32::INFINITY,
+            color,
+        );
+        lines.line_colored(
+            Vec3::new(-i as f32, 0.0, n as f32),
+            Vec3::new(-i as f32, 0.0, -n as f32),
+            f32::INFINITY,
+            color,
+        );
+    }
+}
+
 pub fn camera(mut commands: Commands) {
     commands
         .spawn((
