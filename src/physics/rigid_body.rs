@@ -46,17 +46,20 @@ impl RigidBodyIntegration {
         self.translation
     }
 
-    pub fn push_impulse(&mut self, impulse: Vec3) {
-        self.impulse.0 += impulse;
-        self.impulse.1 += 1;
+    pub fn push_impulse(&mut self, impulse: Vec3, body: &RigidBody) {
+        self.translation += impulse / body.mass;
+        self.impulse = (Vec3::ZERO, 0);
+        // self.impulse.0 += impulse;
+        // self.impulse.1 += 1;
     }
 
     pub fn apply_impulses(&mut self, body: &RigidBody) {
-        if self.impulse.1 > 0 {
-            let total_impulse = self.impulse.0 / self.impulse.1 as f32;
-            self.translation += total_impulse / body.mass;
-            self.impulse = (Vec3::ZERO, 0);
-        }
+        let _ = body;
+        // if self.impulse.1 > 0 {
+        //     let total_impulse = self.impulse.0 / self.impulse.1 as f32;
+        //     self.translation += total_impulse / body.mass;
+        //     self.impulse = (Vec3::ZERO, 0);
+        // }
     }
 
     pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) -> Vec3 {
