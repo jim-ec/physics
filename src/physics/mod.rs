@@ -1,3 +1,4 @@
+pub mod collider;
 pub mod rigid_body;
 
 mod constraint;
@@ -10,11 +11,12 @@ use parry3d::{
     math::Isometry,
     na::Unit,
     query::contact,
-    shape::{Ball, HalfSpace},
+    shape::HalfSpace,
     simba::scalar::{SubsetOf, SupersetOf},
 };
 
 use self::{
+    collider::Collider,
     rigid_body::{RigidBody, RigidBodyIntegration},
     util::{Translation, Vector},
 };
@@ -57,17 +59,13 @@ impl Default for PhysicsParameters {
     }
 }
 
-/// A proto-collider type.
-#[derive(Component, Clone, Copy)]
-pub struct Radius(pub f32);
-
 // TODO: Split into several sub-systems?
 // TODO: Properly use global transform
 fn integrate(
     mut query: Query<(
         &mut RigidBody,
         &mut RigidBodyIntegration,
-        &Radius,
+        &Collider,
         &mut Transform,
     )>,
     parameters: Res<PhysicsParameters>,
@@ -75,7 +73,7 @@ fn integrate(
     for _ in 0..parameters.substeps {
         let dt = 1.0 / parameters.frequency / parameters.substeps as f32 / parameters.time_scale;
 
-        for (mut body, mut integration, &Radius(radius), transform) in query.iter_mut() {
+        for (mut body, mut integration, collider, transform) in query.iter_mut() {
             integration.integrate(
                 &mut body,
                 transform.translation,
@@ -91,7 +89,7 @@ fn integrate(
                     integration.translation().y,
                     integration.translation().z,
                 )),
-                &Ball { radius },
+                collider.parry_collider().as_ref(),
                 0.0,
             )
             .unwrap()
@@ -105,22 +103,20 @@ fn integrate(
         }
 
         let mut combinations = query.iter_combinations_mut();
-        while let Some([(_, mut i1, &Radius(r1), _), (_, mut i2, &Radius(r2), _)]) =
-            combinations.fetch_next()
-        {
+        while let Some([(_, mut i1, c1, _), (_, mut i2, c2, _)]) = combinations.fetch_next() {
             if let Some(contact) = contact::contact(
                 &Isometry::from_subset(&Translation::new(
                     i1.translation().x,
                     i1.translation().y,
                     i1.translation().z,
                 )),
-                &Ball { radius: r1 },
+                c1.parry_collider().as_ref(),
                 &Isometry::from_subset(&Translation::new(
                     i2.translation().x,
                     i2.translation().y,
                     i2.translation().z,
                 )),
-                &Ball { radius: r2 },
+                c2.parry_collider().as_ref(),
                 0.0,
             )
             .unwrap()

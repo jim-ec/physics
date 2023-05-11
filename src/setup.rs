@@ -97,6 +97,12 @@ pub fn camera(mut commands: Commands) {
             ComputedVisibility::default(),
         ))
         .with_children(|children| {
-            children.spawn(DirectionalLightBundle::default());
+            children.spawn(DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    illuminance: 60000.0,
+                    ..default()
+                },
+                ..default()
+            });
         });
 }
