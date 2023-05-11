@@ -153,5 +153,12 @@ fn debug_bodies(query: Query<(&RigidBody, &Transform)>, mut lines: ResMut<DebugL
             0.0,
             Color::GREEN,
         );
+
+        lines.line_colored(
+            transform.translation,
+            Vec3::new(transform.translation.x, 0.0, transform.translation.z),
+            0.0,
+            Color::GRAY,
+        );
     }
 }
