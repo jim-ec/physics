@@ -82,7 +82,7 @@ fn integrate(
         }
 
         let mut combinations = query.iter_combinations_mut();
-        while let Some([(b1, mut i1, c1, _), (b2, mut i2, c2, _)]) = combinations.fetch_next() {
+        while let Some([(_, mut i1, c1, _), (_, mut i2, c2, _)]) = combinations.fetch_next() {
             if let Some(contact) = contact::contact(
                 &convert::to_iso(Transform {
                     translation: i1.translation(),
@@ -106,7 +106,6 @@ fn integrate(
                         * 0.5
                         * contact.dist
                         * convert::vec(contact.normal1.to_superset()),
-                    &b1,
                 );
                 i2.push_impulse(
                     convert::point(contact.point2),
@@ -114,7 +113,6 @@ fn integrate(
                         * 0.5
                         * contact.dist
                         * convert::vec(contact.normal2.to_superset()),
-                    &b2,
                 );
 
                 debug_contact(&mut lines, contact, &parameters);
