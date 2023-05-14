@@ -49,8 +49,16 @@ fn init(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let length = 1.0;
+    commands.spawn((
+        Collider::Plane { normal: Vec3::Y },
+        RigidBodyBundle::from(RigidBody {
+            mass: f32::INFINITY,
+            ..default()
+        }),
+        TransformBundle::IDENTITY,
+    ));
 
+    let length = 1.0;
     let radius = 0.5;
     commands.spawn((
         Collider::Capsule {

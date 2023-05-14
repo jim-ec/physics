@@ -7,14 +7,11 @@ mod util;
 
 use bevy::prelude::*;
 use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
-use parry3d::{
-    math::Isometry, na::Unit, query::contact, shape::HalfSpace, simba::scalar::SubsetOf,
-};
+use parry3d::{query::contact, simba::scalar::SubsetOf};
 
 use self::{
     collider::Collider,
     rigid_body::{RigidBody, RigidBodyIntegration},
-    util::Vector,
 };
 
 #[derive(Default, Debug)]
@@ -68,43 +65,20 @@ fn integrate(
         let dt = 1.0 / parameters.frequency / parameters.substeps as f32 / parameters.time_scale;
 
         for (mut body, mut integration, collider, transform) in query.iter_mut() {
-            let inertia_tensor = collider
+            let inverse_inertia_tensor = collider
                 .parry_collider()
                 .mass_properties(1.0)
-                .principal_inertia();
+                .inv_principal_inertia_sqrt
+                .map(|v| v * v);
 
             integration.integrate(
                 &mut body,
                 transform.translation,
                 transform.rotation,
                 Vec3::new(0.0, -parameters.gravity, 0.0),
-                convert::vec(inertia_tensor),
+                convert::vec(inverse_inertia_tensor),
                 dt,
             );
-
-            if let Some(contact) = contact::contact(
-                &Isometry::identity(),
-                &HalfSpace::new(Unit::new_normalize(Vector::new(0.0, 1.0, 0.0))),
-                &convert::to_iso(Transform {
-                    translation: integration.translation(),
-                    rotation: integration.rotation(),
-                    scale: Vec3::ONE,
-                }),
-                collider.parry_collider().as_ref(),
-                0.0,
-            )
-            .unwrap()
-            {
-                integration.push_impulse(
-                    convert::point(contact.point2),
-                    parameters.stiffness
-                        * contact.dist
-                        * convert::vec(-contact.normal1.to_superset()),
-                    &body,
-                );
-
-                debug_contact(&mut lines, contact, &parameters);
-            }
         }
 
         let mut combinations = query.iter_combinations_mut();

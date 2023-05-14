@@ -27,7 +27,7 @@ pub struct RigidBodyIntegration {
     translation: Vec3,
     rotation: Quat,
     // impulse: (Vec3, usize),
-    inertia_tensor: Vec3,
+    inverse_inertia_tensor: Vec3,
 }
 
 #[derive(Debug, Bundle, Default, Clone, Copy)]
@@ -52,7 +52,7 @@ impl RigidBodyIntegration {
         translation: Vec3,
         rotation: Quat,
         force: Vec3,
-        inertia_tensor: Vec3,
+        inverse_inertia_tensor: Vec3,
         dt: f32,
     ) {
         body.velocity += dt * force / body.mass;
@@ -62,7 +62,7 @@ impl RigidBodyIntegration {
             Quat::from_vec4(dt * 0.5 * body.angular_velocity.extend(0.0)) * self.rotation;
         self.rotation = (rotation + delta_rotation).normalize();
 
-        self.inertia_tensor = inertia_tensor;
+        self.inverse_inertia_tensor = inverse_inertia_tensor;
     }
 
     pub fn translation(self) -> Vec3 {
@@ -79,7 +79,7 @@ impl RigidBodyIntegration {
 
         self.translation += impulse / body.mass;
 
-        let v = (self.inertia_tensor.recip() * (point_of_attack - self.translation)).cross(impulse);
+        let v = (self.inverse_inertia_tensor * (point_of_attack - self.translation)).cross(impulse);
 
         let delta = Quat::from_vec4(0.5 * v.extend(0.0)) * self.rotation;
         self.rotation.x += delta.x;
@@ -87,13 +87,6 @@ impl RigidBodyIntegration {
         self.rotation.z += delta.z;
         self.rotation.w += delta.w;
         self.rotation = self.rotation.normalize();
-
-        // self.rotation +=
-        //     0.5 * Quat::from_sv(
-        //         0.0,
-        //         (self.inverse_inertia * (point - (self.position + self.center_of_mass))).cross(impulse),
-        //     ) * self.rotation;
-        // self.rotation = self.rotation.normalize();
     }
 
     pub fn apply_impulses(&mut self, body: &RigidBody) {

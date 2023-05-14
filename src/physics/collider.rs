@@ -1,16 +1,21 @@
 use bevy::prelude::*;
-use parry3d::shape::{Ball, Capsule, Segment, Shape};
+use parry3d::{
+    na::Unit,
+    shape::{Ball, Capsule, HalfSpace, Segment, Shape},
+};
 
-use super::util::Point;
+use super::{convert, util::Point};
 
 /// Collider component responsible for generating contacts.
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 pub enum Collider {
     #[allow(unused)]
     Ball { radius: f32 },
     #[allow(unused)]
     /// A line segment aligned with the Y-axis inflated by some radius.
     Capsule { radius: f32, length: f32 },
+    #[allow(unused)]
+    Plane { normal: Vec3 },
 }
 
 impl Collider {
@@ -23,6 +28,9 @@ impl Collider {
                     Point::new(0.0, -length / 2.0, 0.0),
                 ),
                 radius,
+            }),
+            Collider::Plane { normal } => Box::new(HalfSpace {
+                normal: Unit::new_normalize(convert::to_vec(normal)),
             }),
         }
     }
