@@ -93,7 +93,7 @@ pub fn camera(mut commands: Commands) {
                 f32::to_radians(50.0),
                 f32::to_radians(60.0),
             ),
-            Visibility::VISIBLE,
+            Visibility::Visible,
             ComputedVisibility::default(),
         ))
         .with_children(|children| {
