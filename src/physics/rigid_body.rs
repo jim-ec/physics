@@ -15,9 +15,14 @@ impl Default for RigidBody {
     }
 }
 
+// TODO: Split into translational and rotational components and bundle
 #[derive(Debug, Component, Default, Clone, Copy)]
 pub struct RigidBodyIntegration {
+    // Currently, this stores the final value after the integration.
+    // TODO: Store delta-value instead?
+    // Probably not possible because apply_impulse_at() requires world coordinates.
     translation: Vec3,
+    rotation: Quat,
     impulse: (Vec3, usize),
 }
 
@@ -37,13 +42,26 @@ impl From<RigidBody> for RigidBodyBundle {
 }
 
 impl RigidBodyIntegration {
-    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, force: Vec3, dt: f32) {
+    pub fn integrate(
+        &mut self,
+        body: &mut RigidBody,
+        translation: Vec3,
+        rotation: Quat,
+        force: Vec3,
+        dt: f32,
+    ) {
         body.velocity += dt * force / body.mass;
         self.translation = translation + dt * body.velocity;
+
+        self.rotation = rotation;
     }
 
     pub fn translation(self) -> Vec3 {
         self.translation
+    }
+
+    pub fn rotation(self) -> Quat {
+        self.rotation
     }
 
     pub fn push_impulse(&mut self, impulse: Vec3, body: &RigidBody) {

@@ -77,6 +77,7 @@ fn integrate(
             integration.integrate(
                 &mut body,
                 transform.translation,
+                transform.rotation,
                 Vec3::new(0.0, -parameters.gravity, 0.0),
                 dt,
             );
@@ -84,11 +85,11 @@ fn integrate(
             if let Some(contact) = contact::contact(
                 &Isometry::identity(),
                 &HalfSpace::new(Unit::new_normalize(Vector::new(0.0, 1.0, 0.0))),
-                &Isometry::from_subset(&Translation::new(
-                    integration.translation().x,
-                    integration.translation().y,
-                    integration.translation().z,
-                )),
+                &convert::to_iso(Transform {
+                    translation: integration.translation(),
+                    rotation: integration.rotation(),
+                    scale: Vec3::ONE,
+                }),
                 collider.parry_collider().as_ref(),
                 0.0,
             )

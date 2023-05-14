@@ -2,6 +2,8 @@ mod camera;
 mod physics;
 mod setup;
 
+use std::f32::consts::TAU;
+
 use crate::camera::OrbitCameraPlugin;
 
 use bevy::prelude::*;
@@ -61,7 +63,11 @@ fn init(
                 ..default()
             })),
             material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, 4.0, 0.0)),
+            transform: Transform {
+                translation: Vec3::new(0.0, 4.0, 0.0),
+                rotation: Quat::from_euler(EulerRot::default(), 0.0, TAU / 8.0, 0.0),
+                scale: Vec3::ONE,
+            },
             ..default()
         },
     ));
