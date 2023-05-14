@@ -23,8 +23,9 @@ fn main() {
     app.insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
         .add_plugins(DefaultPlugins)
         .add_plugin(OrbitCameraPlugin)
-        .add_plugin(PhysicsPlugin { debug: true })
+        .add_plugin(PhysicsPlugin)
         .insert_resource(PhysicsParameters {
+            debug: true,
             gravity: 10.0,
             substeps: 10,
             stiffness: 1.0,
