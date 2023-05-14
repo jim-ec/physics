@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use bevy::prelude::*;
 
 // TODO: Store inertia tensor
@@ -21,9 +23,6 @@ impl Default for RigidBody {
 // TODO: Split into translational and rotational components and bundle
 #[derive(Debug, Component, Default, Clone, Copy)]
 pub struct RigidBodyIntegration {
-    // Currently, this stores the final value after the integration.
-    // TODO: Store delta-value instead?
-    // Probably not possible because apply_impulse_at() requires world coordinates.
     translation: Vec3,
     rotation: Quat,
     impulse: (Vec3, usize),
@@ -93,11 +92,7 @@ impl RigidBodyIntegration {
             let delta = Quat::from_vec4(
                 0.5 * self.angular_impulse.0.extend(0.0) / self.angular_impulse.1 as f32,
             ) * self.rotation;
-            self.rotation.x += delta.x;
-            self.rotation.y += delta.y;
-            self.rotation.z += delta.z;
-            self.rotation.w += delta.w;
-            self.rotation = self.rotation.normalize();
+            self.rotation = self.rotation.add(delta).normalize();
             self.angular_impulse = (Vec3::ZERO, 0);
         }
     }
