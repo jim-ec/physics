@@ -25,7 +25,7 @@ impl Plugin for PhysicsPlugin {
         app.add_plugin(DebugLinesPlugin::with_depth_test(false))
             .insert_resource(PhysicsParameters::default())
             .add_system(integrate)
-            .add_system(debug_bodies);
+            .add_system(debug_bodies.run_if(|param: Res<PhysicsParameters>| param.debug));
     }
 }
 
@@ -156,16 +156,7 @@ fn integrate(
     }
 }
 
-// TODO: Use run condition: https://bevyengine.org/news/bevy-0-10/#run-conditions
-fn debug_bodies(
-    query: Query<(&RigidBody, &Transform)>,
-    mut lines: ResMut<DebugLines>,
-    parameters: Res<PhysicsParameters>,
-) {
-    if !parameters.debug {
-        return;
-    }
-
+fn debug_bodies(query: Query<(&RigidBody, &Transform)>, mut lines: ResMut<DebugLines>) {
     for (body, transform) in query.iter() {
         lines.line_colored(
             transform.translation,
@@ -174,16 +165,15 @@ fn debug_bodies(
             Color::GREEN,
         );
 
-        // lines.line_colored(
-        //     transform.translation,
-        //     Vec3::new(transform.translation.x, 0.0, transform.translation.z),
-        //     0.0,
-        //     Color::GRAY,
-        // );
+        lines.line_colored(
+            transform.translation,
+            Vec3::new(transform.translation.x, 0.0, transform.translation.z),
+            0.0,
+            Color::GRAY,
+        );
     }
 }
 
-// TODO: Use run condition: https://bevyengine.org/news/bevy-0-10/#run-conditions
 fn debug_contact(
     lines: &mut ResMut<DebugLines>,
     contact: contact::Contact,
