@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
+// TODO: Store inertia tensor
 #[derive(Debug, Component, Clone, Copy)]
 pub struct RigidBody {
-    pub mass: f32,
+    pub mass: f32, // TODO: Use enum with absolute mass or density
     pub velocity: Vec3,
+    pub angular_velocity: Vec3,
 }
 
 impl Default for RigidBody {
@@ -11,6 +13,7 @@ impl Default for RigidBody {
         Self {
             mass: 1.0,
             velocity: Vec3::ZERO,
+            angular_velocity: Vec3::ZERO,
         }
     }
 }
@@ -23,7 +26,8 @@ pub struct RigidBodyIntegration {
     // Probably not possible because apply_impulse_at() requires world coordinates.
     translation: Vec3,
     rotation: Quat,
-    impulse: (Vec3, usize),
+    // impulse: (Vec3, usize),
+    inertia_tensor: Vec3,
 }
 
 #[derive(Debug, Bundle, Default, Clone, Copy)]
@@ -48,12 +52,17 @@ impl RigidBodyIntegration {
         translation: Vec3,
         rotation: Quat,
         force: Vec3,
+        inertia_tensor: Vec3,
         dt: f32,
     ) {
         body.velocity += dt * force / body.mass;
         self.translation = translation + dt * body.velocity;
 
-        self.rotation = rotation;
+        let delta_rotation =
+            Quat::from_vec4(dt * 0.5 * body.angular_velocity.extend(0.0)) * self.rotation;
+        self.rotation = (rotation + delta_rotation).normalize();
+
+        self.inertia_tensor = inertia_tensor;
     }
 
     pub fn translation(self) -> Vec3 {
@@ -64,11 +73,27 @@ impl RigidBodyIntegration {
         self.rotation
     }
 
-    pub fn push_impulse(&mut self, impulse: Vec3, body: &RigidBody) {
-        self.translation += impulse / body.mass;
-        self.impulse = (Vec3::ZERO, 0);
+    pub fn push_impulse(&mut self, point_of_attack: Vec3, impulse: Vec3, body: &RigidBody) {
         // self.impulse.0 += impulse;
         // self.impulse.1 += 1;
+
+        self.translation += impulse / body.mass;
+
+        let v = (self.inertia_tensor.recip() * (point_of_attack - self.translation)).cross(impulse);
+
+        let delta = Quat::from_vec4(0.5 * v.extend(0.0)) * self.rotation;
+        self.rotation.x += delta.x;
+        self.rotation.y += delta.y;
+        self.rotation.z += delta.z;
+        self.rotation.w += delta.w;
+        self.rotation = self.rotation.normalize();
+
+        // self.rotation +=
+        //     0.5 * Quat::from_sv(
+        //         0.0,
+        //         (self.inverse_inertia * (point - (self.position + self.center_of_mass))).cross(impulse),
+        //     ) * self.rotation;
+        // self.rotation = self.rotation.normalize();
     }
 
     pub fn apply_impulses(&mut self, body: &RigidBody) {
@@ -80,8 +105,13 @@ impl RigidBodyIntegration {
         // }
     }
 
-    pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) -> Vec3 {
+    pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, rotation: Quat, dt: f32) {
         body.velocity = (self.translation - translation) / dt;
-        self.translation
+
+        let mut delta = self.rotation * rotation.conjugate();
+        if delta.w < 0.0 {
+            delta = -delta;
+        }
+        body.angular_velocity = 2.0 * delta.xyz() / dt;
     }
 }

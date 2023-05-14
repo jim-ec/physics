@@ -49,11 +49,37 @@ fn init(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let radius = 0.5;
     let length = 1.0;
 
+    let radius = 0.5;
     commands.spawn((
-        Collider::Capsule { length, radius },
+        Collider::Capsule {
+            length: 1.0,
+            radius,
+        },
+        RigidBodyBundle::from(RigidBody { ..default() }),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule {
+                radius,
+                depth: length,
+                latitudes: 32,
+                longitudes: 64,
+                ..default()
+            })),
+            material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
+            transform: Transform {
+                translation: Vec3::new(0.0, 2.0, 0.0),
+                rotation: Quat::from_euler(EulerRot::default(), 0.0, TAU / 8.0, 0.0),
+                scale: Vec3::ONE,
+            },
+            ..default()
+        },
+    ));
+    commands.spawn((
+        Collider::Capsule {
+            length: 1.0,
+            radius,
+        },
         RigidBodyBundle::from(RigidBody { ..default() }),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
@@ -66,7 +92,7 @@ fn init(
             material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
             transform: Transform {
                 translation: Vec3::new(0.0, 4.0, 0.0),
-                rotation: Quat::from_euler(EulerRot::default(), 0.0, TAU / 8.0, 0.0),
+                rotation: Quat::IDENTITY,
                 scale: Vec3::ONE,
             },
             ..default()
