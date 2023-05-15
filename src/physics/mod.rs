@@ -107,30 +107,35 @@ fn integrate_rotation(
 }
 
 fn contacts(
-    mut query: Query<(Option<&mut Linear>, Option<&mut Angular>, &Collider)>,
+    mut query: Query<(
+        &Transform,
+        &Collider,
+        Option<&mut Linear>,
+        Option<&mut Angular>,
+    )>,
     parameters: Res<PhysicsParameters>,
     mut lines: ResMut<DebugLines>,
 ) {
     let mut combinations = query.iter_combinations_mut();
     while let Some(
-        [(mut linear_1, mut angular_1, collider_1), (mut linear_2, mut angular_2, collider_2)],
+        [(transform_1, collider_1, mut linear_1, mut angular_1), (transform_2, collider_2, mut linear_2, mut angular_2)],
     ) = combinations.fetch_next()
     {
         let translation_1 = match &linear_1 {
             Some(linear) => linear.translation,
-            None => Vec3::ZERO,
+            None => transform_1.translation,
         };
         let translation_2 = match &linear_2 {
             Some(linear) => linear.translation,
-            None => Vec3::ZERO,
+            None => transform_2.translation,
         };
         let rotation_1 = match &angular_1 {
             Some(angular) => angular.rotation,
-            None => Quat::IDENTITY,
+            None => transform_1.rotation,
         };
         let rotation_2 = match &angular_2 {
             Some(angular) => angular.rotation,
-            None => Quat::IDENTITY,
+            None => transform_2.rotation,
         };
 
         if let Some(contact) = contact::contact(

@@ -67,8 +67,8 @@ fn init(
                 radius,
             },
         },
-        Linear::default(),
-        // Angular::default(),
+        // Linear::default(),
+        Angular::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
                 radius,
@@ -95,7 +95,8 @@ fn init(
                 radius,
             },
         },
-        Rigid::default(),
+        // Rigid::default(),
+        Linear::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
                 radius,
