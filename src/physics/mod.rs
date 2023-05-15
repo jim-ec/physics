@@ -88,7 +88,7 @@ fn integrate_translation(
         linear.integrate(
             transform.translation,
             Vec3::new(0.0, -parameters.gravity, 0.0),
-            collider.mass,
+            collider.inv_mass(),
             dt,
         );
     }
@@ -102,7 +102,7 @@ fn integrate_rotation(
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
     for (mut angular, collider, transform) in query.iter_mut() {
-        angular.integrate(transform.rotation, collider.moment_of_inertia(), dt);
+        angular.integrate(transform.rotation, collider.inv_moment_of_inertia(), dt);
     }
 }
 

@@ -23,7 +23,11 @@ pub enum Shape {
 }
 
 impl Collider {
-    pub fn moment_of_inertia(&self) -> Vec3 {
+    pub fn inv_mass(&self) -> f32 {
+        self.mass.recip()
+    }
+
+    pub fn inv_moment_of_inertia(&self) -> Vec3 {
         let inverse_tensor = self
             .shape
             .parry_shape()
