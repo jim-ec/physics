@@ -1,5 +1,5 @@
 pub mod collider;
-pub mod rigid_body;
+pub mod motion;
 
 mod constraint;
 mod convert;
@@ -11,7 +11,7 @@ use parry3d::{query::contact, simba::scalar::SubsetOf};
 
 use self::{
     collider::Collider,
-    rigid_body::{RigidBody, Rotational, Translational},
+    motion::{Angular, Linear},
 };
 
 #[derive(Debug)]
@@ -78,72 +78,58 @@ impl Default for PhysicsParameters {
 }
 
 fn integrate_translation(
-    mut query: Query<(&mut RigidBody, &mut Translational, &mut Transform)>,
+    mut query: Query<(&mut Linear, &Collider, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut translational, transform) in query.iter_mut() {
-        translational.integrate(
-            &mut body,
+    for (mut linear, collider, transform) in query.iter_mut() {
+        linear.integrate(
             transform.translation,
             Vec3::new(0.0, -parameters.gravity, 0.0),
+            collider.mass,
             dt,
         );
     }
 }
 
 fn integrate_rotation(
-    mut query: Query<(&mut RigidBody, &mut Rotational, &Collider, &mut Transform)>,
+    mut query: Query<(&mut Angular, &Collider, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut rotational, collider, transform) in query.iter_mut() {
-        let inverse_inertia_tensor = collider
-            .parry_collider()
-            .mass_properties(1.0)
-            .inv_principal_inertia_sqrt
-            .map(|v| v * v);
-        rotational.integrate(
-            &mut body,
-            transform.rotation,
-            convert::vec(inverse_inertia_tensor),
-            dt,
-        );
+    for (mut angular, collider, transform) in query.iter_mut() {
+        angular.integrate(transform.rotation, collider.moment_of_inertia(), dt);
     }
 }
 
 fn contacts(
-    mut query: Query<(
-        Option<&mut Translational>,
-        Option<&mut Rotational>,
-        &Collider,
-    )>,
+    mut query: Query<(Option<&mut Linear>, Option<&mut Angular>, &Collider)>,
     parameters: Res<PhysicsParameters>,
     mut lines: ResMut<DebugLines>,
 ) {
     let mut combinations = query.iter_combinations_mut();
     while let Some(
-        [(mut translational_1, mut rotational_1, collider_1), (mut translational_2, mut rotational_2, collider_2)],
+        [(mut linear_1, mut angular_1, collider_1), (mut linear_2, mut angular_2, collider_2)],
     ) = combinations.fetch_next()
     {
-        let translation_1 = match &translational_1 {
-            Some(translational) => translational.translation(),
+        let translation_1 = match &linear_1 {
+            Some(linear) => linear.translation,
             None => Vec3::ZERO,
         };
-        let translation_2 = match &translational_2 {
-            Some(translational) => translational.translation(),
+        let translation_2 = match &linear_2 {
+            Some(linear) => linear.translation,
             None => Vec3::ZERO,
         };
-        let rotation_1 = match &rotational_1 {
-            Some(rotational) => rotational.rotation(),
+        let rotation_1 = match &angular_1 {
+            Some(angular) => angular.rotation,
             None => Quat::IDENTITY,
         };
-        let rotation_2 = match &rotational_2 {
-            Some(rotational) => rotational.rotation(),
+        let rotation_2 = match &angular_2 {
+            Some(angular) => angular.rotation,
             None => Quat::IDENTITY,
         };
 
@@ -153,35 +139,35 @@ fn contacts(
                 rotation: rotation_1,
                 scale: Vec3::ONE,
             }),
-            collider_1.parry_collider().as_ref(),
+            collider_1.shape.parry_shape().as_ref(),
             &convert::to_iso(Transform {
                 translation: translation_2,
                 rotation: rotation_2,
                 scale: Vec3::ONE,
             }),
-            collider_2.parry_collider().as_ref(),
+            collider_2.shape.parry_shape().as_ref(),
             0.0,
         )
         .unwrap()
         {
-            if let Some(translational) = &mut translational_1 {
-                translational.push_impulse(
+            if let Some(linear) = &mut linear_1 {
+                linear.push_impulse(
                     parameters.stiffness
                         * 0.5
                         * contact.dist
                         * convert::vec(contact.normal1.to_superset()),
                 );
             }
-            if let Some(translational) = &mut translational_2 {
-                translational.push_impulse(
+            if let Some(linear) = &mut linear_2 {
+                linear.push_impulse(
                     parameters.stiffness
                         * 0.5
                         * contact.dist
                         * convert::vec(contact.normal2.to_superset()),
                 );
             }
-            if let Some(rotational) = &mut rotational_1 {
-                rotational.push_impulse(
+            if let Some(angular) = &mut angular_1 {
+                angular.push_impulse(
                     convert::point(contact.point1),
                     translation_1,
                     parameters.stiffness
@@ -190,8 +176,8 @@ fn contacts(
                         * convert::vec(contact.normal1.to_superset()),
                 );
             }
-            if let Some(rotational) = &mut rotational_2 {
-                rotational.push_impulse(
+            if let Some(angular) = &mut angular_2 {
+                angular.push_impulse(
                     convert::point(contact.point2),
                     translation_2,
                     parameters.stiffness
@@ -207,41 +193,43 @@ fn contacts(
 }
 
 fn derive_translation(
-    mut query: Query<(&mut RigidBody, &mut Translational, &mut Transform)>,
+    mut query: Query<(&mut Linear, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut translational, mut transform) in query.iter_mut() {
-        translational.apply_impulses(&body);
-        translational.derive(&mut body, transform.translation, dt);
-        transform.translation = translational.translation();
+    for (mut linear, mut transform) in query.iter_mut() {
+        linear.apply_impulses();
+        linear.derive(transform.translation, dt);
+        transform.translation = linear.translation;
     }
 }
 
 fn derive_rotation(
-    mut query: Query<(&mut RigidBody, &mut Rotational, &mut Transform)>,
+    mut query: Query<(&mut Angular, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut rotational, mut transform) in query.iter_mut() {
-        rotational.apply_impulses();
-        rotational.derive(&mut body, transform.rotation, dt);
-        transform.rotation = rotational.rotation();
+    for (mut angular, mut transform) in query.iter_mut() {
+        angular.apply_impulses();
+        angular.derive(transform.rotation, dt);
+        transform.rotation = angular.rotation;
     }
 }
 
-fn debug_bodies(query: Query<(&RigidBody, &Transform)>, mut lines: ResMut<DebugLines>) {
-    for (body, transform) in query.iter() {
-        lines.line_colored(
-            transform.translation,
-            transform.translation + body.velocity,
-            0.0,
-            Color::GREEN,
-        );
+fn debug_bodies(query: Query<(&Transform, Option<&Linear>)>, mut lines: ResMut<DebugLines>) {
+    for (transform, linear) in query.iter() {
+        if let Some(linear) = linear {
+            lines.line_colored(
+                transform.translation,
+                transform.translation + linear.velocity,
+                0.0,
+                Color::GREEN,
+            );
+        }
 
         lines.line_colored(
             transform.translation,

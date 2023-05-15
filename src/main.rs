@@ -9,8 +9,8 @@ use crate::camera::OrbitCameraPlugin;
 use bevy::prelude::*;
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use physics::{
-    collider::Collider,
-    rigid_body::{RigidBody, RigidBodyBundle, Rotational, Translational},
+    collider::{Collider, Shape},
+    motion::{Angular, Linear, Rigid},
     PhysicsParameters, PhysicsPlugin,
 };
 use rand::random;
@@ -49,25 +49,26 @@ fn init(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
-        Collider::Plane { normal: Vec3::Y },
-        RigidBodyBundle::from(RigidBody {
+        Collider {
             mass: f32::INFINITY,
-            ..default()
-        }),
+            shape: Shape::Plane { normal: Vec3::Y },
+        },
+        Rigid::default(),
         TransformBundle::IDENTITY,
     ));
 
     let length = 1.0;
     let radius = 0.5;
     commands.spawn((
-        Collider::Capsule {
-            length: 1.0,
-            radius,
+        Collider {
+            mass: 1.0,
+            shape: Shape::Capsule {
+                length: 1.0,
+                radius,
+            },
         },
-        // RigidBodyBundle::from(RigidBody { ..default() }),
-        RigidBody::default(),
-        // Rotational::default(),
-        Translational::default(),
+        Linear::default(),
+        // Angular::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
                 radius,
@@ -87,11 +88,14 @@ fn init(
         },
     ));
     commands.spawn((
-        Collider::Capsule {
-            length: 1.0,
-            radius,
+        Collider {
+            mass: 1.0,
+            shape: Shape::Capsule {
+                length: 1.0,
+                radius,
+            },
         },
-        RigidBodyBundle::from(RigidBody { ..default() }),
+        Rigid::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
                 radius,
