@@ -3,30 +3,19 @@
     "tasks": [
         {
             "type": "cargo",
-            "command": "run",
-            "problemMatcher": [
-                "$rustc"
-            ],
-            "label": "Run"
-        },
-        {
-            "type": "cargo",
-            "command": "run",
-            "args": [
-                "--release"
-            ],
-            "problemMatcher": [
-                "$rustc"
-            ],
-            "label": "Run Release"
-        },
-        {
-            "type": "cargo",
             "command": "build",
             "problemMatcher": [
                 "$rustc"
             ],
-            "label": "Build"
+            "label": "build"
+        },
+        {
+            "type": "cargo",
+            "command": "run",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "label": "run"
         },
     ]
 }
