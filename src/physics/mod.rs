@@ -37,7 +37,7 @@ impl Plugin for PhysicsPlugin {
             .add_system(debug_bodies.run_if(|param: Res<PhysicsParameters>| param.debug));
 
         for _ in 0..self.substeps {
-            app.add_system(integrate);
+            app.add_systems((integrate, contacts, derive).chain());
         }
     }
 }
@@ -68,7 +68,6 @@ impl Default for PhysicsParameters {
     }
 }
 
-// TODO: Split into several sub-systems? https://bevyengine.org/news/bevy-0-10/#managing-complex-control-flow-with-schedules
 // TODO: Properly use global transform
 fn integrate(
     mut query: Query<(
@@ -80,7 +79,6 @@ fn integrate(
     )>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
-    mut lines: ResMut<DebugLines>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
@@ -105,20 +103,24 @@ fn integrate(
             dt,
         );
     }
+}
 
+fn contacts(
+    mut query: Query<(&mut Translational, &mut Rotational, &Collider)>,
+    parameters: Res<PhysicsParameters>,
+    mut lines: ResMut<DebugLines>,
+) {
     let mut combinations = query.iter_combinations_mut();
-    while let Some([(_, mut i1, mut r1, c1, _), (_, mut i2, mut r2, c2, _)]) =
-        combinations.fetch_next()
-    {
+    while let Some([(mut t1, mut r1, c1), (mut t2, mut r2, c2)]) = combinations.fetch_next() {
         if let Some(contact) = contact::contact(
             &convert::to_iso(Transform {
-                translation: i1.translation(),
+                translation: t1.translation(),
                 rotation: r1.rotation(),
                 scale: Vec3::ONE,
             }),
             c1.parry_collider().as_ref(),
             &convert::to_iso(Transform {
-                translation: i2.translation(),
+                translation: t2.translation(),
                 rotation: r2.rotation(),
                 scale: Vec3::ONE,
             }),
@@ -127,13 +129,13 @@ fn integrate(
         )
         .unwrap()
         {
-            i1.push_impulse(
+            t1.push_impulse(
                 parameters.stiffness
                     * 0.5
                     * contact.dist
                     * convert::vec(contact.normal1.to_superset()),
             );
-            i2.push_impulse(
+            t2.push_impulse(
                 parameters.stiffness
                     * 0.5
                     * contact.dist
@@ -142,7 +144,7 @@ fn integrate(
 
             r1.push_impulse(
                 convert::point(contact.point1),
-                i1.translation(),
+                t1.translation(),
                 parameters.stiffness
                     * 0.5
                     * contact.dist
@@ -150,7 +152,7 @@ fn integrate(
             );
             r2.push_impulse(
                 convert::point(contact.point2),
-                i2.translation(),
+                t2.translation(),
                 parameters.stiffness
                     * 0.5
                     * contact.dist
@@ -160,8 +162,21 @@ fn integrate(
             debug_contact(&mut lines, contact, &parameters);
         }
     }
+}
 
-    for (mut body, mut translational, mut rotational, _, mut transform) in query.iter_mut() {
+fn derive(
+    mut query: Query<(
+        &mut RigidBody,
+        &mut Translational,
+        &mut Rotational,
+        &mut Transform,
+    )>,
+    parameters: Res<PhysicsParameters>,
+    internal: Res<InternalParameters>,
+) {
+    let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
+
+    for (mut body, mut translational, mut rotational, mut transform) in query.iter_mut() {
         translational.apply_impulses(&body);
         translational.derive(&mut body, transform.translation, dt);
         transform.translation = translational.translation();
