@@ -34,7 +34,6 @@ pub struct Rotational {
 }
 
 // TODO: pub struct Motional
-
 #[derive(Debug, Bundle, Default, Clone, Copy)]
 pub struct RigidBodyBundle {
     body: RigidBody,

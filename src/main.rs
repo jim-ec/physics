@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use physics::{
     collider::Collider,
-    rigid_body::{RigidBody, RigidBodyBundle},
+    rigid_body::{RigidBody, RigidBodyBundle, Rotational, Translational},
     PhysicsParameters, PhysicsPlugin,
 };
 use rand::random;
@@ -64,7 +64,10 @@ fn init(
             length: 1.0,
             radius,
         },
-        RigidBodyBundle::from(RigidBody { ..default() }),
+        // RigidBodyBundle::from(RigidBody { ..default() }),
+        RigidBody::default(),
+        // Rotational::default(),
+        Translational::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
                 radius,
@@ -77,6 +80,7 @@ fn init(
             transform: Transform {
                 translation: Vec3::new(0.0, 2.0, 0.0),
                 rotation: Quat::from_euler(EulerRot::default(), 0.0, TAU / 8.0, 0.0),
+                // rotation: Quat::IDENTITY,
                 scale: Vec3::ONE,
             },
             ..default()

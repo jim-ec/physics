@@ -37,7 +37,16 @@ impl Plugin for PhysicsPlugin {
             .add_system(debug_bodies.run_if(|param: Res<PhysicsParameters>| param.debug));
 
         for _ in 0..self.substeps {
-            app.add_systems((integrate, contacts, derive).chain());
+            app.add_systems(
+                (
+                    integrate_translation,
+                    integrate_rotation,
+                    contacts,
+                    derive_translation,
+                    derive_rotation,
+                )
+                    .chain(),
+            );
         }
     }
 }
@@ -68,34 +77,36 @@ impl Default for PhysicsParameters {
     }
 }
 
-// TODO: Properly use global transform
-fn integrate(
-    mut query: Query<(
-        &mut RigidBody,
-        &mut Translational,
-        &mut Rotational,
-        &Collider,
-        &mut Transform,
-    )>,
+fn integrate_translation(
+    mut query: Query<(&mut RigidBody, &mut Translational, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut translational, mut rotational, collider, transform) in query.iter_mut() {
-        let inverse_inertia_tensor = collider
-            .parry_collider()
-            .mass_properties(1.0)
-            .inv_principal_inertia_sqrt
-            .map(|v| v * v);
-
+    for (mut body, mut translational, transform) in query.iter_mut() {
         translational.integrate(
             &mut body,
             transform.translation,
             Vec3::new(0.0, -parameters.gravity, 0.0),
             dt,
         );
+    }
+}
 
+fn integrate_rotation(
+    mut query: Query<(&mut RigidBody, &mut Rotational, &Collider, &mut Transform)>,
+    parameters: Res<PhysicsParameters>,
+    internal: Res<InternalParameters>,
+) {
+    let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
+
+    for (mut body, mut rotational, collider, transform) in query.iter_mut() {
+        let inverse_inertia_tensor = collider
+            .parry_collider()
+            .mass_properties(1.0)
+            .inv_principal_inertia_sqrt
+            .map(|v| v * v);
         rotational.integrate(
             &mut body,
             transform.rotation,
@@ -106,81 +117,117 @@ fn integrate(
 }
 
 fn contacts(
-    mut query: Query<(&mut Translational, &mut Rotational, &Collider)>,
+    mut query: Query<(
+        Option<&mut Translational>,
+        Option<&mut Rotational>,
+        &Collider,
+    )>,
     parameters: Res<PhysicsParameters>,
     mut lines: ResMut<DebugLines>,
 ) {
     let mut combinations = query.iter_combinations_mut();
-    while let Some([(mut t1, mut r1, c1), (mut t2, mut r2, c2)]) = combinations.fetch_next() {
+    while let Some(
+        [(mut translational_1, mut rotational_1, collider_1), (mut translational_2, mut rotational_2, collider_2)],
+    ) = combinations.fetch_next()
+    {
+        let translation_1 = match &translational_1 {
+            Some(translational) => translational.translation(),
+            None => Vec3::ZERO,
+        };
+        let translation_2 = match &translational_2 {
+            Some(translational) => translational.translation(),
+            None => Vec3::ZERO,
+        };
+        let rotation_1 = match &rotational_1 {
+            Some(rotational) => rotational.rotation(),
+            None => Quat::IDENTITY,
+        };
+        let rotation_2 = match &rotational_2 {
+            Some(rotational) => rotational.rotation(),
+            None => Quat::IDENTITY,
+        };
+
         if let Some(contact) = contact::contact(
             &convert::to_iso(Transform {
-                translation: t1.translation(),
-                rotation: r1.rotation(),
+                translation: translation_1,
+                rotation: rotation_1,
                 scale: Vec3::ONE,
             }),
-            c1.parry_collider().as_ref(),
+            collider_1.parry_collider().as_ref(),
             &convert::to_iso(Transform {
-                translation: t2.translation(),
-                rotation: r2.rotation(),
+                translation: translation_2,
+                rotation: rotation_2,
                 scale: Vec3::ONE,
             }),
-            c2.parry_collider().as_ref(),
+            collider_2.parry_collider().as_ref(),
             0.0,
         )
         .unwrap()
         {
-            t1.push_impulse(
-                parameters.stiffness
-                    * 0.5
-                    * contact.dist
-                    * convert::vec(contact.normal1.to_superset()),
-            );
-            t2.push_impulse(
-                parameters.stiffness
-                    * 0.5
-                    * contact.dist
-                    * convert::vec(contact.normal2.to_superset()),
-            );
-
-            r1.push_impulse(
-                convert::point(contact.point1),
-                t1.translation(),
-                parameters.stiffness
-                    * 0.5
-                    * contact.dist
-                    * convert::vec(contact.normal1.to_superset()),
-            );
-            r2.push_impulse(
-                convert::point(contact.point2),
-                t2.translation(),
-                parameters.stiffness
-                    * 0.5
-                    * contact.dist
-                    * convert::vec(contact.normal2.to_superset()),
-            );
+            if let Some(translational) = &mut translational_1 {
+                translational.push_impulse(
+                    parameters.stiffness
+                        * 0.5
+                        * contact.dist
+                        * convert::vec(contact.normal1.to_superset()),
+                );
+            }
+            if let Some(translational) = &mut translational_2 {
+                translational.push_impulse(
+                    parameters.stiffness
+                        * 0.5
+                        * contact.dist
+                        * convert::vec(contact.normal2.to_superset()),
+                );
+            }
+            if let Some(rotational) = &mut rotational_1 {
+                rotational.push_impulse(
+                    convert::point(contact.point1),
+                    translation_1,
+                    parameters.stiffness
+                        * 0.5
+                        * contact.dist
+                        * convert::vec(contact.normal1.to_superset()),
+                );
+            }
+            if let Some(rotational) = &mut rotational_2 {
+                rotational.push_impulse(
+                    convert::point(contact.point2),
+                    translation_2,
+                    parameters.stiffness
+                        * 0.5
+                        * contact.dist
+                        * convert::vec(contact.normal2.to_superset()),
+                );
+            }
 
             debug_contact(&mut lines, contact, &parameters);
         }
     }
 }
 
-fn derive(
-    mut query: Query<(
-        &mut RigidBody,
-        &mut Translational,
-        &mut Rotational,
-        &mut Transform,
-    )>,
+fn derive_translation(
+    mut query: Query<(&mut RigidBody, &mut Translational, &mut Transform)>,
     parameters: Res<PhysicsParameters>,
     internal: Res<InternalParameters>,
 ) {
     let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
 
-    for (mut body, mut translational, mut rotational, mut transform) in query.iter_mut() {
+    for (mut body, mut translational, mut transform) in query.iter_mut() {
         translational.apply_impulses(&body);
         translational.derive(&mut body, transform.translation, dt);
         transform.translation = translational.translation();
+    }
+}
 
+fn derive_rotation(
+    mut query: Query<(&mut RigidBody, &mut Rotational, &mut Transform)>,
+    parameters: Res<PhysicsParameters>,
+    internal: Res<InternalParameters>,
+) {
+    let dt = 1.0 / parameters.frequency / internal.substeps as f32 / parameters.time_scale;
+
+    for (mut body, mut rotational, mut transform) in query.iter_mut() {
         rotational.apply_impulses();
         rotational.derive(&mut body, transform.rotation, dt);
         transform.rotation = rotational.rotation();
