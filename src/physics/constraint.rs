@@ -1,10 +1,8 @@
-#![allow(unused)]
-
-use super::util::Vector;
+use bevy::prelude::*;
 
 #[derive(Debug)]
-pub struct Constraint {
-    pub rigid: usize,
-    pub contacts: (Vector, Vector),
+pub struct PositionalConstraint {
+    pub bodies: (Entity, Entity),
+    pub contacts: (Vec3, Vec3),
     pub distance: f32,
 }
