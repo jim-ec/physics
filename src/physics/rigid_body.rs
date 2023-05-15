@@ -20,66 +20,51 @@ impl Default for RigidBody {
     }
 }
 
-// TODO: Split into translational and rotational components and bundle
 #[derive(Debug, Component, Default, Clone, Copy)]
-pub struct RigidBodyIntegration {
+pub struct Translational {
     translation: Vec3,
-    rotation: Quat,
     impulse: (Vec3, usize),
+}
+
+#[derive(Debug, Component, Default, Clone, Copy)]
+pub struct Rotational {
+    rotation: Quat,
     angular_impulse: (Vec3, usize),
     inverse_inertia_tensor: Vec3,
 }
 
+// TODO: pub struct Motional
+
 #[derive(Debug, Bundle, Default, Clone, Copy)]
 pub struct RigidBodyBundle {
     body: RigidBody,
-    integration: RigidBodyIntegration,
+    translational: Translational,
+    rotational: Rotational,
 }
 
 impl From<RigidBody> for RigidBodyBundle {
     fn from(body: RigidBody) -> Self {
         RigidBodyBundle {
             body,
-            integration: RigidBodyIntegration::default(),
+            translational: Translational::default(),
+            rotational: Rotational::default(),
         }
     }
 }
 
-impl RigidBodyIntegration {
-    pub fn integrate(
-        &mut self,
-        body: &mut RigidBody,
-        translation: Vec3,
-        rotation: Quat,
-        force: Vec3,
-        inverse_inertia_tensor: Vec3,
-        dt: f32,
-    ) {
+impl Translational {
+    pub fn integrate(&mut self, body: &mut RigidBody, translation: Vec3, force: Vec3, dt: f32) {
         body.velocity += dt * force / body.mass;
         self.translation = translation + dt * body.velocity;
-
-        let delta_rotation =
-            Quat::from_vec4(dt * 0.5 * body.angular_velocity.extend(0.0)) * self.rotation;
-        self.rotation = (rotation + delta_rotation).normalize();
-
-        self.inverse_inertia_tensor = inverse_inertia_tensor;
     }
 
     pub fn translation(self) -> Vec3 {
         self.translation
     }
 
-    pub fn rotation(self) -> Quat {
-        self.rotation
-    }
-
-    pub fn push_impulse(&mut self, point_of_attack: Vec3, impulse: Vec3) {
+    pub fn push_impulse(&mut self, impulse: Vec3) {
         self.impulse.0 += impulse;
         self.impulse.1 += 1;
-
-        self.angular_impulse.0 +=
-            (self.inverse_inertia_tensor * (point_of_attack - self.translation)).cross(impulse);
-        self.angular_impulse.1 += 1;
     }
 
     pub fn apply_impulses(&mut self, body: &RigidBody) {
@@ -88,6 +73,39 @@ impl RigidBodyIntegration {
             self.translation += total_impulse / body.mass;
             self.impulse = (Vec3::ZERO, 0);
         }
+    }
+
+    pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, dt: f32) {
+        body.velocity = (self.translation - translation) / dt;
+    }
+}
+
+impl Rotational {
+    pub fn integrate(
+        &mut self,
+        body: &mut RigidBody,
+        rotation: Quat,
+        inverse_inertia_tensor: Vec3,
+        dt: f32,
+    ) {
+        let delta_rotation =
+            Quat::from_vec4(dt * 0.5 * body.angular_velocity.extend(0.0)) * self.rotation;
+        self.rotation = (rotation + delta_rotation).normalize();
+
+        self.inverse_inertia_tensor = inverse_inertia_tensor;
+    }
+
+    pub fn rotation(self) -> Quat {
+        self.rotation
+    }
+
+    pub fn push_impulse(&mut self, point_of_attack: Vec3, center_of_mass: Vec3, impulse: Vec3) {
+        self.angular_impulse.0 +=
+            (self.inverse_inertia_tensor * (point_of_attack - center_of_mass)).cross(impulse);
+        self.angular_impulse.1 += 1;
+    }
+
+    pub fn apply_impulses(&mut self) {
         if self.angular_impulse.1 > 0 {
             let delta = Quat::from_vec4(
                 0.5 * self.angular_impulse.0.extend(0.0) / self.angular_impulse.1 as f32,
@@ -97,9 +115,7 @@ impl RigidBodyIntegration {
         }
     }
 
-    pub fn derive(&mut self, body: &mut RigidBody, translation: Vec3, rotation: Quat, dt: f32) {
-        body.velocity = (self.translation - translation) / dt;
-
+    pub fn derive(&mut self, body: &mut RigidBody, rotation: Quat, dt: f32) {
         let mut delta = self.rotation * rotation.conjugate();
         if delta.w < 0.0 {
             delta = -delta;
