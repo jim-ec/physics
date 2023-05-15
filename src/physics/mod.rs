@@ -7,10 +7,9 @@ mod util;
 
 use bevy::prelude::*;
 use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
-use parry3d::{query::contact, simba::scalar::SubsetOf};
 
 use self::{
-    collider::Collider,
+    collider::{contact, Collider, Contact},
     motion::{Angular, Linear},
 };
 
@@ -138,57 +137,29 @@ fn contacts(
             None => transform_2.rotation,
         };
 
-        if let Some(contact) = contact::contact(
-            &convert::to_iso(Transform {
-                translation: translation_1,
-                rotation: rotation_1,
-                scale: Vec3::ONE,
-            }),
-            collider_1.shape.parry_shape().as_ref(),
-            &convert::to_iso(Transform {
-                translation: translation_2,
-                rotation: rotation_2,
-                scale: Vec3::ONE,
-            }),
-            collider_2.shape.parry_shape().as_ref(),
-            0.0,
-        )
-        .unwrap()
-        {
+        if let Some(contact) = contact(
+            (collider_1, collider_2),
+            (translation_1, translation_2),
+            (rotation_1, rotation_2),
+        ) {
             if let Some(linear) = &mut linear_1 {
-                linear.push_impulse(
-                    parameters.stiffness
-                        * 0.5
-                        * contact.dist
-                        * convert::vec(contact.normal1.to_superset()),
-                );
+                linear.push_impulse(parameters.stiffness * 0.5 * contact.depth * contact.normals.0);
             }
             if let Some(linear) = &mut linear_2 {
-                linear.push_impulse(
-                    parameters.stiffness
-                        * 0.5
-                        * contact.dist
-                        * convert::vec(contact.normal2.to_superset()),
-                );
+                linear.push_impulse(parameters.stiffness * 0.5 * contact.depth * contact.normals.1);
             }
             if let Some(angular) = &mut angular_1 {
                 angular.push_impulse(
-                    convert::point(contact.point1),
+                    contact.points.0,
                     translation_1,
-                    parameters.stiffness
-                        * 0.5
-                        * contact.dist
-                        * convert::vec(contact.normal1.to_superset()),
+                    parameters.stiffness * 0.5 * contact.depth * contact.normals.0,
                 );
             }
             if let Some(angular) = &mut angular_2 {
                 angular.push_impulse(
-                    convert::point(contact.point2),
+                    contact.points.1,
                     translation_2,
-                    parameters.stiffness
-                        * 0.5
-                        * contact.dist
-                        * convert::vec(contact.normal2.to_superset()),
+                    parameters.stiffness * 0.5 * contact.depth * contact.normals.1,
                 );
             }
 
@@ -247,18 +218,13 @@ fn debug_bodies(query: Query<(&Transform, Option<&Linear>)>, mut lines: ResMut<D
 
 fn debug_contact(
     lines: &mut ResMut<DebugLines>,
-    contact: contact::Contact,
+    contact: Contact,
     parameters: &Res<PhysicsParameters>,
 ) {
     if parameters.debug {
-        debug_point(lines, convert::point(contact.point1), Color::YELLOW);
-        debug_point(lines, convert::point(contact.point2), Color::YELLOW);
-        lines.line_colored(
-            convert::point(contact.point1),
-            convert::point(contact.point2),
-            0.0,
-            Color::YELLOW,
-        );
+        debug_point(lines, contact.points.0, Color::YELLOW);
+        debug_point(lines, contact.points.1, Color::YELLOW);
+        lines.line_colored(contact.points.0, contact.points.1, 0.0, Color::YELLOW);
     }
 }
 
