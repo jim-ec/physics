@@ -117,48 +117,61 @@ fn contacts(
 ) {
     let mut combinations = query.iter_combinations_mut();
     while let Some(
-        [(transform_1, collider_1, mut linear_1, mut angular_1), (transform_2, collider_2, mut linear_2, mut angular_2)],
+        [(past_0, collider_0, mut linear_0, mut angular_0), (past_1, collider_1, mut linear_1, mut angular_1)],
     ) = combinations.fetch_next()
     {
+        let translation_0 = match &linear_0 {
+            Some(linear) => linear.translation,
+            None => past_0.translation,
+        };
         let translation_1 = match &linear_1 {
             Some(linear) => linear.translation,
-            None => transform_1.translation,
+            None => past_1.translation,
         };
-        let translation_2 = match &linear_2 {
-            Some(linear) => linear.translation,
-            None => transform_2.translation,
+        let rotation_0 = match &angular_0 {
+            Some(angular) => angular.rotation,
+            None => past_0.rotation,
         };
         let rotation_1 = match &angular_1 {
             Some(angular) => angular.rotation,
-            None => transform_1.rotation,
+            None => past_1.rotation,
         };
-        let rotation_2 = match &angular_2 {
-            Some(angular) => angular.rotation,
-            None => transform_2.rotation,
+
+        let future_0 = Transform {
+            translation: translation_0,
+            rotation: rotation_0,
+            scale: Vec3::ONE,
+        };
+        let future_1 = Transform {
+            translation: translation_1,
+            rotation: rotation_1,
+            scale: Vec3::ONE,
         };
 
         if let Some(contact) = contact(
-            (collider_1, collider_2),
-            (translation_1, translation_2),
-            (rotation_1, rotation_2),
+            (collider_0, collider_1),
+            (translation_0, translation_1),
+            (rotation_0, rotation_1),
         ) {
-            if let Some(linear) = &mut linear_1 {
+            let mut correction_1 = 0.5 * contact.depth * contact.normals.1;
+
+            if let Some(linear) = &mut linear_0 {
                 linear.push_impulse(parameters.stiffness * 0.5 * contact.depth * contact.normals.0);
             }
-            if let Some(linear) = &mut linear_2 {
+            if let Some(linear) = &mut linear_1 {
                 linear.push_impulse(parameters.stiffness * 0.5 * contact.depth * contact.normals.1);
             }
-            if let Some(angular) = &mut angular_1 {
+            if let Some(angular) = &mut angular_0 {
                 angular.push_impulse(
                     contact.points.0,
-                    translation_1,
+                    translation_0,
                     parameters.stiffness * 0.5 * contact.depth * contact.normals.0,
                 );
             }
-            if let Some(angular) = &mut angular_2 {
+            if let Some(angular) = &mut angular_1 {
                 angular.push_impulse(
                     contact.points.1,
-                    translation_2,
+                    translation_1,
                     parameters.stiffness * 0.5 * contact.depth * contact.normals.1,
                 );
             }

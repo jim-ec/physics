@@ -67,7 +67,7 @@ fn init(
                 radius,
             },
         },
-        // Linear::default(),
+        Linear::default().velocity(Vec3::X),
         Angular::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule {
@@ -79,35 +79,7 @@ fn init(
             })),
             material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
             transform: Transform {
-                translation: Vec3::new(0.0, 2.0, 0.0),
-                rotation: Quat::from_euler(EulerRot::default(), 0.0, TAU / 8.0, 0.0),
-                // rotation: Quat::IDENTITY,
-                scale: Vec3::ONE,
-            },
-            ..default()
-        },
-    ));
-    commands.spawn((
-        Collider {
-            mass: 1.0,
-            shape: Shape::Capsule {
-                length: 1.0,
-                radius,
-            },
-        },
-        // Rigid::default(),
-        Linear::default(),
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule {
-                radius,
-                depth: length,
-                latitudes: 32,
-                longitudes: 64,
-                ..default()
-            })),
-            material: materials.add(Color::hsl(random::<f32>() * 360.0, 1.0, 0.8).into()),
-            transform: Transform {
-                translation: Vec3::new(0.0, 4.0, 0.0),
+                translation: Vec3::new(0.0, radius + 0.5 * length, 0.0),
                 rotation: Quat::IDENTITY,
                 scale: Vec3::ONE,
             },
