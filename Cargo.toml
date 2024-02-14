@@ -4,11 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = "0.10.1"
-bevy_prototype_debug_lines = { version = "0.10.1", features = ["3d"] }
+bevy = "0.12.1"
 derive_setters = "0.1.5"
 lerp = "0.4.0"
-parry3d = "0.13.4"
+parry3d = "0.13.6"
 rand = "0.8.5"
 
 [profile.dev]

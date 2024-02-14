@@ -6,7 +6,6 @@ mod convert;
 mod util;
 
 use bevy::prelude::*;
-use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
 
 use self::{
     collider::{contact, Collider, Contact},
@@ -28,15 +27,18 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         // TODO: Fix order dependencies using system sets
 
-        app.add_plugin(DebugLinesPlugin::with_depth_test(false))
-            .insert_resource(PhysicsParameters::default())
+        app.insert_resource(PhysicsParameters::default())
             .insert_resource(InternalParameters {
                 substeps: self.substeps,
             })
-            .add_system(debug_bodies.run_if(|param: Res<PhysicsParameters>| param.debug));
+            .add_systems(
+                Update,
+                debug_bodies.run_if(|param: Res<PhysicsParameters>| param.debug),
+            );
 
         for _ in 0..self.substeps {
             app.add_systems(
+                Update,
                 (
                     integrate_translation,
                     integrate_rotation,
@@ -113,7 +115,7 @@ fn contacts(
         Option<&mut Angular>,
     )>,
     parameters: Res<PhysicsParameters>,
-    mut lines: ResMut<DebugLines>,
+    mut gizmos: Gizmos,
 ) {
     let mut combinations = query.iter_combinations_mut();
     while let Some(
@@ -176,7 +178,7 @@ fn contacts(
                 );
             }
 
-            debug_contact(&mut lines, contact, &parameters);
+            debug_contact(&mut gizmos, contact, &parameters);
         }
     }
 }
@@ -209,44 +211,38 @@ fn derive_rotation(
     }
 }
 
-fn debug_bodies(query: Query<(&Transform, Option<&Linear>)>, mut lines: ResMut<DebugLines>) {
+fn debug_bodies(query: Query<(&Transform, Option<&Linear>)>, mut gizmos: Gizmos) {
     for (transform, linear) in query.iter() {
         if let Some(linear) = linear {
-            lines.line_colored(
+            gizmos.line(
                 transform.translation,
                 transform.translation + linear.velocity,
-                0.0,
                 Color::GREEN,
             );
         }
 
-        lines.line_colored(
+        gizmos.line(
             transform.translation,
             Vec3::new(transform.translation.x, 0.0, transform.translation.z),
-            0.0,
             Color::GRAY,
         );
     }
 }
 
-fn debug_contact(
-    lines: &mut ResMut<DebugLines>,
-    contact: Contact,
-    parameters: &Res<PhysicsParameters>,
-) {
+fn debug_contact(gizmos: &mut Gizmos, contact: Contact, parameters: &Res<PhysicsParameters>) {
     if parameters.debug {
-        debug_point(lines, contact.points.0, Color::YELLOW);
-        debug_point(lines, contact.points.1, Color::YELLOW);
-        lines.line_colored(contact.points.0, contact.points.1, 0.0, Color::YELLOW);
+        debug_point(gizmos, contact.points.0, Color::YELLOW);
+        debug_point(gizmos, contact.points.1, Color::YELLOW);
+        gizmos.line(contact.points.0, contact.points.1, Color::YELLOW);
     }
 }
 
-fn debug_point(lines: &mut ResMut<DebugLines>, p: Vec3, color: Color) {
+fn debug_point(gizmos: &mut Gizmos, p: Vec3, color: Color) {
     const L: f32 = 0.1;
-    lines.line_colored(p + L * Vec3::X, p, 0.0, color);
-    lines.line_colored(p - L * Vec3::X, p, 0.0, color);
-    lines.line_colored(p + L * Vec3::Y, p, 0.0, color);
-    lines.line_colored(p - L * Vec3::Y, p, 0.0, color);
-    lines.line_colored(p + L * Vec3::Z, p, 0.0, color);
-    lines.line_colored(p - L * Vec3::Z, p, 0.0, color);
+    gizmos.line(p + L * Vec3::X, p, color);
+    gizmos.line(p - L * Vec3::X, p, color);
+    gizmos.line(p + L * Vec3::Y, p, color);
+    gizmos.line(p - L * Vec3::Y, p, color);
+    gizmos.line(p + L * Vec3::Z, p, color);
+    gizmos.line(p - L * Vec3::Z, p, color);
 }

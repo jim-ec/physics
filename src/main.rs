@@ -2,12 +2,9 @@ mod camera;
 mod physics;
 mod setup;
 
-use std::f32::consts::TAU;
-
 use crate::camera::OrbitCameraPlugin;
 
 use bevy::prelude::*;
-use bevy_prototype_debug_lines::DebugLinesPlugin;
 use physics::{
     collider::{Collider, Shape},
     motion::{Angular, Linear, Rigid},
@@ -22,8 +19,8 @@ fn main() {
 
     app.insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
         .add_plugins(DefaultPlugins)
-        .add_plugin(OrbitCameraPlugin)
-        .add_plugin(PhysicsPlugin { substeps: 10 })
+        .add_plugins(OrbitCameraPlugin)
+        .add_plugins(PhysicsPlugin { substeps: 10 })
         .insert_resource(PhysicsParameters {
             debug: true,
             gravity: 10.0,
@@ -31,14 +28,9 @@ fn main() {
             frequency: 60.0,
             time_scale: 1.0,
         })
-        .add_system(bevy::window::close_on_esc)
-        .add_startup_system(setup::camera)
-        .add_startup_system(setup::axes)
-        .add_startup_system(init);
-
-    if !app.is_plugin_added::<DebugLinesPlugin>() {
-        app.add_plugin(DebugLinesPlugin::with_depth_test(false));
-    }
+        .add_systems(Startup, setup::camera)
+        .add_systems(Update, setup::axes)
+        .add_systems(Startup, init);
 
     app.run();
 }

@@ -9,7 +9,7 @@ pub struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(camera);
+        app.add_systems(Update, camera);
     }
 }
 
@@ -46,14 +46,14 @@ fn camera(
     mut query: Query<(&mut OrbitCamera, &mut Transform)>,
 ) {
     let scroll = wheel
-        .iter()
+        .read()
         .fold(Vec2::ZERO, |acc, ev| acc + vec2(ev.x, ev.y));
 
     for (mut orbit_camera, mut transform) in query.iter_mut() {
         const SENSITIVITY: f32 = 0.008;
         const ORBIT_ADAPTATION: f32 = 0.4;
 
-        if keys.pressed(KeyCode::LWin) {
+        if keys.pressed(KeyCode::SuperLeft) {
             orbit_camera.radius *= 1.0 - 0.001 * scroll.y;
         } else {
             orbit_camera.target_azimuth += SENSITIVITY * scroll.x;
