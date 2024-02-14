@@ -139,12 +139,12 @@ fn contacts(
             None => past_1.rotation,
         };
 
-        let future_0 = Transform {
+        let _future_0 = Transform {
             translation: translation_0,
             rotation: rotation_0,
             scale: Vec3::ONE,
         };
-        let future_1 = Transform {
+        let _future_1 = Transform {
             translation: translation_1,
             rotation: rotation_1,
             scale: Vec3::ONE,
@@ -155,7 +155,7 @@ fn contacts(
             (translation_0, translation_1),
             (rotation_0, rotation_1),
         ) {
-            let mut correction_1 = 0.5 * contact.depth * contact.normals.1;
+            let mut _correction_1 = 0.5 * contact.depth * contact.normals.1;
 
             if let Some(linear) = &mut linear_0 {
                 linear.push_impulse(parameters.stiffness * 0.5 * contact.depth * contact.normals.0);
